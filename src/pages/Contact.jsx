@@ -1,110 +1,163 @@
-import { useState, useRef } from "react";
-import { Link } from "react-router-dom";
-import gsap from "gsap";
-import { useGSAP } from "@gsap/react";
+import React, { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { motion } from "framer-motion";
+import { Loader2 } from "lucide-react";
 
-gsap.registerPlugin(useGSAP);
+// 🛡️ 1. Define the Strict Zod Schema
+const contactSchema = z.object({
+  name: z.string().min(2, "Identity must be at least 2 characters long"),
+  email: z.string().email("Invalid email format detected"),
+  subject: z.string().min(5, "Subject needs more detail (min 5 chars)"),
+  message: z.string().min(15, "Transmission too short. Provide more intel."),
+});
 
 const Contact = () => {
-  const container = useRef();
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    message: "",
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successMsg, setSuccessMsg] = useState("");
+
+  // 🚀 2. Initialize React Hook Form with Zod
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm({
+    resolver: zodResolver(contactSchema),
   });
 
-  useGSAP(
-    () => {
-      gsap.from(".gsap-reveal", {
-        scale: 0.9,
-        y: 30,
-        opacity: 0,
-        duration: 0.8,
-        stagger: 0.2,
-        ease: "back.out(1.2)",
-      });
-    },
-    { scope: container },
-  );
+  // 📡 3. Form Submit Handler
+  const onSubmit = async (data) => {
+    setIsSubmitting(true);
+    setSuccessMsg("");
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+    // Simulate Backend API Call
+    await new Promise((resolve) => setTimeout(resolve, 2000));
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log("Message Sent:", formData);
-    alert("Message sent successfully (Frontend Demo)!");
-    setFormData({ name: "", email: "", message: "" });
+    console.log("Transmission Sent:", data);
+    setSuccessMsg("Transmission successful. HQ will contact you shortly.");
+    setIsSubmitting(false);
+    reset(); // Clear the form
   };
 
   return (
-    <section ref={container} className="py-32 bg-gray-900 min-h-screen">
-      <div className="container mx-auto px-6 max-w-3xl flex flex-col justify-center h-full">
-        <div className="gsap-reveal text-center mb-12">
-          <h2 className="text-4xl font-bold mb-4 gradient-text">
-            Get in Touch
+    <div className="min-h-[80vh] flex items-center justify-center bg-[#050505] pt-32 pb-20 px-6">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="max-w-2xl w-full bg-[#0a0a0a] border border-white/10 rounded-3xl p-8 md:p-12 relative overflow-hidden shadow-[0_0_50px_rgba(168,85,247,0.05)]"
+      >
+        <div className="mb-8 text-center">
+          <span className="text-[10px] font-mono tracking-[0.5em] text-purple-500 uppercase block mb-4">
+            Secure Channel
+          </span>
+          <h2 className="text-3xl md:text-5xl font-black uppercase text-white tracking-tighter">
+            Establish <br /> Comms.
           </h2>
-          <p className="text-gray-400">
-            Have questions? We'd love to hear from you.
-          </p>
         </div>
 
-        <form
-          onSubmit={handleSubmit}
-          className="gsap-reveal space-y-6 bg-gray-800 p-8 rounded-xl shadow-lg hover:shadow-[0_0_20px_rgba(168,85,247,0.3)] transition-all"
-        >
+        {/* Success Message Alert */}
+        {successMsg && (
+          <div className="mb-6 p-4 bg-green-500/10 border border-green-500/30 text-green-400 text-xs font-bold tracking-widest uppercase rounded-xl text-center">
+            {successMsg}
+          </div>
+        )}
+
+        {/* 📝 The Form */}
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* NAME FIELD */}
+            <div>
+              <label className="block text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-2">
+                Operative Name
+              </label>
+              <input
+                {...register("name")}
+                type="text"
+                placeholder="John Doe"
+                className={`w-full bg-[#050505] border ${errors.name ? "border-red-500" : "border-white/10"} rounded-xl px-4 py-3 text-sm text-white focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all`}
+              />
+              {errors.name && (
+                <p className="text-red-500 text-[9px] uppercase tracking-widest mt-2">
+                  {errors.name.message}
+                </p>
+              )}
+            </div>
+
+            {/* EMAIL FIELD */}
+            <div>
+              <label className="block text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-2">
+                Email Address
+              </label>
+              <input
+                {...register("email")}
+                type="email"
+                placeholder="operative@nexus.com"
+                className={`w-full bg-[#050505] border ${errors.email ? "border-red-500" : "border-white/10"} rounded-xl px-4 py-3 text-sm text-white focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all`}
+              />
+              {errors.email && (
+                <p className="text-red-500 text-[9px] uppercase tracking-widest mt-2">
+                  {errors.email.message}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* SUBJECT FIELD */}
           <div>
-            <label className="block text-gray-400 mb-2">Name</label>
+            <label className="block text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-2">
+              Transmission Subject
+            </label>
             <input
+              {...register("subject")}
               type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              required
-              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 focus:border-purple-500 focus:outline-none text-white"
+              placeholder="e.g. Pro-Circuit Inquiry"
+              className={`w-full bg-[#050505] border ${errors.subject ? "border-red-500" : "border-white/10"} rounded-xl px-4 py-3 text-sm text-white focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all`}
             />
+            {errors.subject && (
+              <p className="text-red-500 text-[9px] uppercase tracking-widest mt-2">
+                {errors.subject.message}
+              </p>
+            )}
           </div>
+
+          {/* MESSAGE FIELD */}
           <div>
-            <label className="block text-gray-400 mb-2">Email</label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 focus:border-purple-500 focus:outline-none text-white"
-            />
-          </div>
-          <div>
-            <label className="block text-gray-400 mb-2">Message</label>
+            <label className="block text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-2">
+              Encrypted Intel (Message)
+            </label>
             <textarea
-              name="message"
-              value={formData.message}
-              onChange={handleChange}
-              required
-              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 focus:border-purple-500 focus:outline-none text-white"
-              rows="4"
-            ></textarea>
+              {...register("message")}
+              rows="5"
+              placeholder="Type your message here..."
+              className={`w-full bg-[#050505] border ${errors.message ? "border-red-500" : "border-white/10"} rounded-xl px-4 py-3 text-sm text-white focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all resize-none`}
+            />
+            {errors.message && (
+              <p className="text-red-500 text-[9px] uppercase tracking-widest mt-2">
+                {errors.message.message}
+              </p>
+            )}
           </div>
+
+          {/* SUBMIT BUTTON */}
           <button
             type="submit"
-            className="bg-purple-600 hover:bg-purple-700 w-full px-8 py-3 rounded-lg text-lg font-semibold transition-all transform hover:scale-105 hover-glow"
+            disabled={isSubmitting}
+            className="w-full flex items-center justify-center gap-3 bg-purple-600 hover:bg-purple-500 text-white font-black uppercase tracking-widest text-xs py-4 rounded-xl transition-all shadow-[0_0_20px_rgba(168,85,247,0.2)] disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Send Message
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" /> Transmitting...
+              </>
+            ) : (
+              "Send Transmission"
+            )}
           </button>
         </form>
-
-        <div className="gsap-reveal text-center mt-6">
-          <Link
-            to="/"
-            className="bg-gray-700 hover:bg-gray-600 px-6 py-2 rounded-lg text-white font-semibold transition-all transform hover:scale-105 shadow-md inline-block"
-          >
-            🏠 Go Home
-          </Link>
-        </div>
-      </div>
-    </section>
+      </motion.div>
+    </div>
   );
 };
 

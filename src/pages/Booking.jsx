@@ -1,228 +1,238 @@
-import { useState, useContext, useRef, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
-import gsap from "gsap";
-import { useGSAP } from "@gsap/react";
-import { AuthContext } from "../context/AuthContext";
-
-gsap.registerPlugin(useGSAP);
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import useApi from "../hooks/useApi"; // ✅ Correct secure hook
+import { useNavigate } from "react-router-dom";
+import PlayerAmount from "../components/PlayerAmount";
+import StationGrid from "../components/StationGrid";
+import HUDTimePicker from "../components/HUDTimePicker";
+import { useUser } from "@clerk/clerk-react";
+import {
+  IoCallOutline,
+  IoChevronBackOutline,
+  IoCheckmarkCircleOutline,
+} from "react-icons/io5";
 
 const Booking = () => {
-  const container = useRef();
   const navigate = useNavigate();
+  const { user, isLoaded } = useUser();
+  const api = useApi();
 
-  // 1. Context hamesha component ke ANDAR!
-  const { currUser } = useContext(AuthContext);
+  const [step, setStep] = useState(1);
+  const [playerCount, setPlayerCount] = useState(0);
+  const [selectedSeats, setSelectedSeats] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     phone: "",
-    bookingType: "PC",
-    membersCount: 1,
-    membersName: "",
-    bookingTimeStart: "",
-    bookingTimeEnd: "",
+    startTime: "",
+    duration: 1,
+    totalPrice: 100,
+    selectedDate: "Today",
   });
 
-  // 2. Agar user logged in hai, toh uska data auto-fill kar do
+  // 🛡️ Sync user data once loaded
   useEffect(() => {
-    if (currUser) {
+    if (isLoaded && user) {
       setFormData((prev) => ({
         ...prev,
-        name: currUser.username || "",
-        email: currUser.email || "",
-        phone: currUser.phone || "",
+        name: user.fullName || user.firstName,
+        email: user.primaryEmailAddress?.emailAddress,
       }));
+    } else if (isLoaded && !user) {
+      navigate("/login", {
+        state: { message: "Access Denied! Login required." },
+      });
     }
-  }, [currUser]);
+  }, [user, isLoaded, navigate]);
 
-  // 3. GSAP Animations
-  // useGSAP(
-  //   () => {
-  //     gsap.from(".gsap-reveal", {
-  //       y: 40,
-  //       opacity: 0,
-  //       duration: 0.8,
-  //       stagger: 0.1,
-  //       ease: "power3.out",
-  //     });
-  //   },
-  //   { scope: container },
-  // );
-
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = async (e) => {
+  const handleFinalSubmit = async (e) => {
     e.preventDefault();
-    try {
-      // API call to Backend
-      const response = await axios.post(
-        "http://localhost:3005/api/bookings",
-        formData,
-      );
+    setLoading(true);
+    setError("");
 
-      if (response.data.success) {
-        alert("🎮 " + response.data.message);
-        navigate("/bookings"); // Redirect to booking list
+    try {
+      const now = new Date();
+      let targetDate = new Date();
+
+      if (formData.selectedDate === "Tomorrow") {
+        targetDate.setDate(now.getDate() + 1);
+      } else if (formData.selectedDate !== "Today") {
+        const [day, month] = formData.selectedDate.split(" ");
+        const monthMap = { April: 3, May: 4 };
+        targetDate.setDate(parseInt(day));
+        targetDate.setMonth(monthMap[month]);
       }
-    } catch (error) {
-      // Shows your custom backend error (e.g. "Overlapping time")
-      alert(
-        error.response?.data?.message || "Booking failed! Please try again.",
-      );
+
+      const [hours, minutes] = formData.startTime.split(":");
+      targetDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+
+      const startISO = targetDate.toISOString();
+      const endISO = new Date(
+        targetDate.getTime() + formData.duration * 60 * 60 * 1000,
+      ).toISOString();
+
+      const payload = {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        bookingType: selectedSeats[0]?.startsWith("C") ? "Console" : "PC", // Adjusted for seed format
+        membersCount: playerCount,
+        membersName: [formData.name],
+        bookingTime: { start: startISO, end: endISO },
+        stations: selectedSeats,
+        totalAmount: formData.totalPrice,
+      };
+
+      // 🚨 FIX: Use relative path only. Interceptor handles the rest.
+      const res = await api.post("/bookings", payload);
+
+      if (res.data.success) setStep(4);
+    } catch (err) {
+      console.error("DEBUG FRONTEND ERROR:", {
+        status: err.response?.status,
+        data: err.response?.data,
+        headers: err.config?.headers, // Isme check karna ki 'Authorization' header ja raha hai ya nahi
+      });
+
+      setError(err.response?.data?.message || "Deployment failed.");
+    } finally {
+      setLoading(false);
     }
   };
+
+  if (!isLoaded)
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center font-black text-purple-500 animate-pulse">
+        AUTHENTICATING SYSTEM...
+      </div>
+    );
+  if (!user) return null;
 
   return (
-    <div
-      ref={container}
-      className="min-h-screen flex items-center justify-center bg-gray-900 py-32"
-    >
-      <div className="gsap-reveal w-full max-w-2xl bg-gray-800 p-8 rounded-2xl shadow-lg border border-gray-700 transition-all hover:shadow-[0_0_20px_rgba(168,85,247,0.3)]">
-        {/* Title */}
-        <h1 className="text-3xl font-bold text-center mb-8 text-purple-400">
-          🎮 Book Your Gaming Experience
-        </h1>
-
-        {/* Booking Form */}
-        <form onSubmit={handleSubmit} className="space-y-6 text-gray-300">
-          <div className="gsap-reveal">
-            <label className="block mb-2 font-semibold text-white">
-              Full Name
-            </label>
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-2 rounded-lg bg-gray-900 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 text-white"
-            />
-          </div>
-
-          <div className="gsap-reveal">
-            <label className="block mb-2 font-semibold text-white">Email</label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-2 rounded-lg bg-gray-900 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 text-white"
-            />
-          </div>
-
-          <div className="gsap-reveal">
-            <label className="block mb-2 font-semibold text-white">
-              Phone Number
-            </label>
-            <input
-              type="text"
-              name="phone"
-              pattern="\d{10}"
-              value={formData.phone}
-              onChange={handleChange}
-              required
-              placeholder="10-digit number"
-              className="w-full px-4 py-2 rounded-lg bg-gray-900 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 text-white"
-            />
-          </div>
-
-          <div className="gsap-reveal">
-            <label className="block mb-2 font-semibold text-white">
-              Booking Type
-            </label>
-            <select
-              name="bookingType"
-              value={formData.bookingType}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-2 rounded-lg bg-gray-900 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 text-white"
-            >
-              <option value="PC">Gaming PC</option>
-              <option value="VR">VR Experience</option>
-            </select>
-          </div>
-
-          <div className="gsap-reveal">
-            <label className="block mb-2 font-semibold text-white">
-              Number of Members
-            </label>
-            <input
-              type="number"
-              name="membersCount"
-              value={formData.membersCount}
-              onChange={handleChange}
-              min="1"
-              className="w-full px-4 py-2 rounded-lg bg-gray-900 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 text-white"
-            />
-          </div>
-
-          <div className="gsap-reveal">
-            <label className="block mb-2 font-semibold text-white">
-              Members Names (comma separated)
-            </label>
-            <input
-              type="text"
-              name="membersName"
-              value={formData.membersName}
-              onChange={handleChange}
-              placeholder="e.g. John, Sarah, Alex"
-              className="w-full px-4 py-2 rounded-lg bg-gray-900 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 text-white"
-            />
-          </div>
-
-          <div className="gsap-reveal grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block mb-2 font-semibold text-white">
-                Start Time
-              </label>
-              <input
-                type="datetime-local"
-                name="bookingTimeStart"
-                value={formData.bookingTimeStart}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 rounded-lg bg-gray-900 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 text-white"
-              />
-            </div>
-            <div>
-              <label className="block mb-2 font-semibold text-white">
-                End Time
-              </label>
-              <input
-                type="datetime-local"
-                name="bookingTimeEnd"
-                value={formData.bookingTimeEnd}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 rounded-lg bg-gray-900 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 text-white"
-              />
-            </div>
-          </div>
-
-          <div className="gsap-reveal text-center pt-4">
-            <button
-              type="submit"
-              className="w-full bg-purple-600 hover:bg-purple-700 px-8 py-3 rounded-lg text-lg font-semibold transition-all transform hover:scale-105 hover:shadow-[0_0_15px_rgba(168,85,247,0.5)]"
-            >
-              🚀 Confirm Booking
-            </button>
-          </div>
-        </form>
-
-        <div className="gsap-reveal text-center mt-6">
-          <Link
-            to="/"
-            className="bg-gray-700 hover:bg-gray-600 px-6 py-2 rounded-lg text-white font-semibold transition-all transform hover:scale-105 shadow-md inline-block"
+    <div className="min-h-screen bg-black text-white pt-20">
+      <AnimatePresence mode="wait">
+        {step === 1 && (
+          <motion.div
+            key="step1"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
           >
-            🏠 Go Home
-          </Link>
-        </div>
-      </div>
+            <button
+              onClick={() => navigate("/")}
+              className="fixed top-24 left-4 md:top-28 md:left-10 flex items-center gap-1 text-purple-500 font-black text-[10px] uppercase tracking-widest z-50 bg-purple-500/10 px-3 py-2 rounded-full border border-purple-500/20"
+            >
+              <IoChevronBackOutline /> EXIT BASE
+            </button>
+            <PlayerAmount
+              onSelectionComplete={(size) => {
+                setPlayerCount(size);
+                setStep(2);
+              }}
+            />
+          </motion.div>
+        )}
+
+        {step === 2 && (
+          <motion.div
+            key="step2"
+            initial={{ opacity: 0, x: 30 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -30 }}
+          >
+            <button
+              onClick={() => setStep(1)}
+              className="fixed top-24 left-4 md:top-28 md:left-10 flex items-center gap-1 text-purple-500 font-black text-[10px] uppercase tracking-widest z-50 bg-purple-500/10 px-3 py-2 rounded-full border border-purple-500/20"
+            >
+              <IoChevronBackOutline /> SQUAD SIZE
+            </button>
+            <StationGrid
+              maxSelectable={playerCount}
+              onFinalize={(seats) => {
+                setSelectedSeats(seats);
+                setStep(3);
+              }}
+            />
+          </motion.div>
+        )}
+
+        {step === 3 && (
+          <motion.div
+            key="step3"
+            className="flex items-center justify-center min-h-[80vh] p-4"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+          >
+            <div className="w-full max-w-lg bg-[#0a0a0a] border border-purple-500/20 p-6 md:p-10 rounded-[2.5rem] shadow-[0_0_80px_rgba(168,85,247,0.1)] relative">
+              <button
+                onClick={() => setStep(2)}
+                className="absolute top-6 left-6 text-purple-500 text-xl"
+              >
+                <IoChevronBackOutline />
+              </button>
+              <h2 className="text-xl md:text-2xl font-black mb-1 uppercase tracking-tighter text-center">
+                Deploying to Base
+              </h2>
+              <form onSubmit={handleFinalSubmit} className="space-y-4">
+                <div className="relative group mt-6">
+                  <IoCallOutline className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-500 text-lg" />
+                  <input
+                    required
+                    type="tel"
+                    placeholder="CONTACT NUMBER"
+                    className="w-full bg-purple-900/10 border border-purple-500/20 rounded-xl pl-12 pr-4 py-4 outline-none focus:border-purple-500 text-sm font-bold text-white"
+                    value={formData.phone}
+                    onChange={(e) =>
+                      setFormData({ ...formData, phone: e.target.value })
+                    }
+                  />
+                </div>
+                <HUDTimePicker
+                  playerCount={playerCount}
+                  onDataUpdate={(data) => setFormData({ ...formData, ...data })}
+                />
+                {error && (
+                  <p className="text-red-500 text-[10px] font-black text-center uppercase animate-pulse">
+                    {error}
+                  </p>
+                )}
+                <button
+                  disabled={loading}
+                  type="submit"
+                  className="w-full bg-purple-600 hover:bg-purple-500 py-4 rounded-2xl font-black text-sm md:text-lg shadow-[0_10px_20px_rgba(168,85,247,0.3)] mt-4 uppercase tracking-widest transition-all"
+                >
+                  {loading ? "UPLOADING..." : "FINALIZE DEPLOYMENT"}
+                </button>
+              </form>
+            </div>
+          </motion.div>
+        )}
+
+        {step === 4 && (
+          <motion.div
+            key="step4"
+            className="fixed inset-0 flex items-center justify-center bg-black z-1000"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <div className="text-center">
+              <IoCheckmarkCircleOutline className="text-[120px] text-purple-500 mx-auto drop-shadow-[0_0_30px_rgba(168,85,247,0.8)]" />
+              <h1 className="text-3xl md:text-5xl font-black tracking-tighter italic mt-6 uppercase">
+                MISSION ACCOMPLISHED
+              </h1>
+              <button
+                onClick={() => navigate("/bookings")}
+                className="mt-10 px-10 py-4 border-2 border-purple-500 rounded-full font-black text-xs hover:bg-purple-500 transition-all uppercase tracking-widest"
+              >
+                Return to Dashboard
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

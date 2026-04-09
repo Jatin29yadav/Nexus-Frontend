@@ -1,1 +1,15 @@
 @import "tailwindcss";
+
+.custom-datetime::-webkit-calendar-picker-indicator {
+  filter: invert(48%) sepia(85%) saturate(2478%) hue-rotate(245deg)
+    brightness(98%) contrast(100%);
+  cursor: pointer;
+}
+
+input[type="datetime-local"] {
+  color-scheme: dark;
+}
+
+body {
+  font-family: "Outfit", sans-serif;
+}

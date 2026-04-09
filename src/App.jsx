@@ -1,37 +1,243 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "./context/AuthContext";
+import React, { useEffect } from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  useLocation,
+} from "react-router-dom";
+import { AnimatePresence } from "framer-motion";
+import { ReactLenis } from "lenis/react";
+import { Toaster } from "sonner";
+import { useUser } from "@clerk/clerk-react";
+import useApi from "./hooks/useApi";
+
 import Layout from "./components/Layout";
+import CircularMenu from "./components/Navbar/CircluarNav";
+import { PageTransition } from "./components/PageTransition";
+import ProtectedRoute from "./components/ProtectedRoute";
+import "lenis/dist/lenis.css";
+
 import Home from "./pages/Home";
 import Gallery from "./pages/Gallery";
 import Booking from "./pages/Booking";
 import BookingList from "./pages/BookingList";
 import Tournament from "./pages/Tournament";
-import TournamentList from "./pages/TournamentList";
+import TournamentDetails from "./pages/TournamentDetails";
 import Contact from "./pages/Contact";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Payment from "./pages/Payment";
+import UpdateBooking from "./components/UpdateBooking";
+
+import AdminLayout from "./pages/admin/AdminLayout";
+import AdminHUD from "./pages/admin/AdminHUD";
+import AdminBookings from "./pages/admin/AdminBookings";
+import AdminUsers from "./pages/admin/AdminUsers";
+import AdminSettings from "./pages/admin/AdminSettings";
+import AdminMessages from "./pages/admin/AdminMessages";
+
+const SyncComponent = () => {
+  const { user, isLoaded } = useUser();
+  const api = useApi();
+
+  useEffect(() => {
+    const syncWithBackend = async () => {
+      if (isLoaded && user) {
+        try {
+          await api.post("/users/sync", {
+            clerkId: user.id,
+            email: user.primaryEmailAddress.emailAddress,
+            username: user.username || user.firstName,
+          });
+          console.log("Nexus Operative Synced! 🚀");
+        } catch (err) {
+          console.error("Sync Failed:", err);
+        }
+      }
+    };
+    syncWithBackend();
+  }, [isLoaded, user, api]);
+
+  return null;
+};
+
+const AnimatedRoutes = () => {
+  const location = useLocation();
+
+  return (
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+        <Route path="/" element={<Layout />}>
+          <Route
+            index
+            element={
+              <PageTransition>
+                <Home />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="gallery"
+            element={
+              <PageTransition>
+                <Gallery />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="tournament"
+            element={
+              <PageTransition>
+                <Tournament />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="tournament/:id"
+            element={
+              <PageTransition>
+                <TournamentDetails />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="contact"
+            element={
+              <PageTransition>
+                <Contact />
+              </PageTransition>
+            }
+          />
+
+          <Route
+            path="login/*"
+            element={
+              <PageTransition>
+                <Login />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="register/*"
+            element={
+              <PageTransition>
+                <Register />
+              </PageTransition>
+            }
+          />
+
+          <Route
+            path="booking"
+            element={
+              <ProtectedRoute>
+                <PageTransition>
+                  <Booking />
+                </PageTransition>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="bookings"
+            element={
+              <ProtectedRoute>
+                <PageTransition>
+                  <BookingList />
+                </PageTransition>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="booking/update/:id"
+            element={
+              <ProtectedRoute>
+                <PageTransition>
+                  <UpdateBooking />
+                </PageTransition>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="payment"
+            element={
+              <ProtectedRoute>
+                <PageTransition>
+                  <Payment />
+                </PageTransition>
+              </ProtectedRoute>
+            }
+          />
+        </Route>
+
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute>
+              <AdminLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route
+            index
+            element={
+              <PageTransition>
+                <AdminHUD />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="bookings"
+            element={
+              <PageTransition>
+                <AdminBookings />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="users"
+            element={
+              <PageTransition>
+                <AdminUsers />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="settings"
+            element={
+              <PageTransition>
+                <AdminSettings />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="messages"
+            element={
+              <PageTransition>
+                <AdminMessages />
+              </PageTransition>
+            }
+          />
+        </Route>
+      </Routes>
+    </AnimatePresence>
+  );
+};
 
 function App() {
   return (
-    <AuthProvider>
+    <ReactLenis root options={{ lerp: 0.1, duration: 1.5, smoothWheel: true }}>
+      <Toaster
+        theme="dark"
+        position="bottom-right"
+        toastOptions={{
+          className:
+            "border border-white/10 bg-[#0a0a0a] text-white font-bold tracking-widest uppercase text-[10px] shadow-[0_0_20px_rgba(168,85,247,0.15)]",
+        }}
+      />
       <Router>
-        <Routes>
-          <Route path="/" element={<Layout />}>
-            <Route index element={<Home />} />
-            <Route path="gallery" element={<Gallery />} />
-            <Route path="booking" element={<Booking />} />
-            <Route path="bookings" element={<BookingList />} />
-            <Route path="tournament" element={<Tournament />} />
-            <Route path="tournament/list" element={<TournamentList />} />
-            <Route path="contact" element={<Contact />} />
-            <Route path="login" element={<Login />} />
-            <Route path="register" element={<Register />} />
-            <Route path="payment" element={<Payment />} />
-          </Route>
-        </Routes>
+        <SyncComponent />
+        <AnimatedRoutes />
       </Router>
-    </AuthProvider>
+    </ReactLenis>
   );
 }
 

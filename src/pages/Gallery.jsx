@@ -1,91 +1,143 @@
-import { useRef } from "react";
-import { Link } from "react-router-dom";
-import gsap from "gsap";
-import { useGSAP } from "@gsap/react";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
+import React, { useState, useEffect } from "react";
+import { motion, useScroll, useTransform, useSpring } from "framer-motion";
 
-gsap.registerPlugin(useGSAP, ScrollTrigger);
+const Gallery = ({
+  images = [
+    "https://i.pinimg.com/736x/ff/0e/37/ff0e373273f5411d8d11eb79ff3c9220.jpg",
+    "https://i.pinimg.com/736x/2d/fe/1e/2dfe1e8c53cca9a4ad43365884fc5125.jpg",
+    "https://i.pinimg.com/736x/8b/0b/88/8b0b88056b187c198686a2c693aa6a93.jpg",
+    "https://i.pinimg.com/1200x/26/94/7e/26947ea787fd66f1b67455cbe9604c6f.jpg",
+    "https://i.pinimg.com/736x/4c/6b/b1/4c6bb1b9327b80fb04ae244f4d30a972.jpg",
+    "https://i.pinimg.com/1200x/fd/b6/a1/fdb6a1673bc6b1cef2e5d7b3c9d6c270.jpg",
+    "https://i.pinimg.com/736x/ff/a7/d7/ffa7d768904207513e1955b94afa8bf4.jpg",
+    "https://i.pinimg.com/736x/80/ba/86/80ba86fa2e6bc3b83c2f47bb067b642a.jpg",
+  ],
+  noiseUrl = "https://grainy-gradients.vercel.app/noise.svg",
+}) => {
+  const { scrollY } = useScroll();
+  const [dimensions, setDimensions] = useState({
+    gridCols: 4,
+    xRange: -600,
+    yRange: -1200,
+    scale: 1.6,
+    itemCount: 32,
+  });
 
-const Gallery = () => {
-  const container = useRef();
+  // 🚀 Logic: Dynamic adjustments based on viewport
+  useEffect(() => {
+    const handleResize = () => {
+      const width = window.innerWidth;
+      if (width < 640) {
+        // Mobile
+        setDimensions({
+          gridCols: 2,
+          xRange: -200,
+          yRange: -800,
+          scale: 2.2,
+          itemCount: 16,
+        });
+      } else if (width < 1024) {
+        // Tablet
+        setDimensions({
+          gridCols: 3,
+          xRange: -400,
+          yRange: -1000,
+          scale: 1.8,
+          itemCount: 24,
+        });
+      } else {
+        // Desktop
+        setDimensions({
+          gridCols: 4,
+          xRange: -600,
+          yRange: -1200,
+          scale: 1.6,
+          itemCount: 32,
+        });
+      }
+    };
 
-  useGSAP(
-    () => {
-      // Header Animation
-      gsap.from(".gallery-header", {
-        y: 50,
-        opacity: 0,
-        duration: 1,
-        ease: "power3.out",
-      });
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
-      // Masonry Images Stagger Animation
-      gsap.from(".gallery-img", {
-        scrollTrigger: {
-          trigger: ".masonry",
-          start: "top 85%", // Starts animating when gallery top hits 85% of screen
-        },
-        scale: 0.8,
-        opacity: 0,
-        duration: 0.6,
-        stagger: 0.1, // Har image 0.1s ke gap par aayegi
-        ease: "back.out(1.2)",
-      });
-    },
-    { scope: container },
+  // Smooth spring physics for fluid movement
+  const smoothScroll = useSpring(scrollY, { stiffness: 50, damping: 20 });
+
+  const xMovement = useTransform(
+    smoothScroll,
+    [0, 3000],
+    [0, dimensions.xRange],
   );
-
-  const images = [
-    "https://images.wallpapersden.com/image/download/ghostrunner-4k-gaming_bWdmZ26UmZqaraWkpJRobWllrWdma2U.jpg",
-    "https://images.wallpapersden.com/image/download/gaming-poster-of-horizon-call-of-the-mountain-4k_bmVrbWuUmZqaraWkpJRobWllrWdma2U.jpg",
-    "https://images.wallpapersden.com/image/download/assassins-s-creed-shadows-4k-gaming_bmdtZWmUmZqaraWkpJRobWllrWdmbm4.jpg",
-    "https://rog.asus.com/media/1610082227143.jpg",
-    "https://assets-prd.ignimgs.com/2024/10/04/hero-1728069720656.jpg",
-    "https://i.pinimg.com/1200x/f2/7c/ef/f27cefb92c87f96a1225323959ec22c2.jpg",
-    "https://i.pinimg.com/1200x/ea/c1/bf/eac1bfc76f13d5366636c26517ff7c2d.jpg",
-    "https://wallpapercave.com/wp/wp4983330.jpg",
-    "https://i.pinimg.com/736x/fe/36/81/fe3681b679a06351fc8334e0b0b32463.jpg",
-    "https://i.pinimg.com/1200x/0d/ad/a1/0dada1304d2febe68713b744d347d6de.jpg",
-    "https://rare-gallery.com/uploads/posts/583119-games-4k-computer.jpg",
-    "https://c4.wallpaperflare.com/wallpaper/162/894/557/colorful-neon-computer-keyboards-wallpaper-preview.jpg",
-  ];
+  const yMovement = useTransform(
+    smoothScroll,
+    [0, 3000],
+    [0, dimensions.yRange],
+  );
+  const colWidth = 100 / dimensions.gridCols;
 
   return (
-    <section ref={container} className="py-32 bg-gray-900 min-h-screen">
-      <div className="container mx-auto px-6">
-        <div className="gallery-header text-center mb-12">
-          <h2 className="text-4xl font-bold mb-4 gradient-text">
-            Our Gaming Gallery
-          </h2>
-          <p className="text-gray-400 max-w-2xl mx-auto">
-            Take a sneak peek at Nexus Gaming Cafe’s vibrant atmosphere,
-            high-end setups, and exciting tournaments.
-          </p>
-        </div>
+    <div className="relative h-[450vh] bg-black overflow-hidden selection:bg-purple-500/30">
+      {/* 🌫️ FIXED NOISE OVERLAY */}
+      <div
+        className="fixed inset-0 pointer-events-none z-40 opacity-15"
+        style={{ backgroundImage: `url('${noiseUrl}')` }}
+      />
 
-        <div className="masonry columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
-          {images.map((src, index) => (
-            <div key={index} className="gallery-img break-inside-avoid">
-              <img
-                src={src}
-                alt={`Gaming Setup ${index + 1}`}
-                loading="lazy"
-                className="w-full h-auto rounded-xl shadow-lg hover:shadow-purple-500/50 transition-shadow duration-300"
-              />
-            </div>
-          ))}
-        </div>
-
-        <div className="text-center mt-12">
-          <Link
-            to="/"
-            className="bg-gray-700 hover:bg-gray-600 px-6 py-2 rounded-lg text-white font-semibold transition-all transform hover:scale-105 shadow-md inline-block"
+      {/* 🛸 THE KINETIC GRID (Responsive) */}
+      <motion.div
+        className="absolute top-0 left-0 w-full flex flex-wrap content-start transform-gpu z-10"
+        style={{
+          rotate: -12,
+          scale: dimensions.scale,
+          x: xMovement,
+          y: yMovement,
+        }}
+      >
+        {Array.from({ length: dimensions.itemCount }).map((_, i) => (
+          <div
+            key={i}
+            className="p-2 sm:p-4 aspect-3/4"
+            style={{ width: `${colWidth}%` }}
           >
-            🏠 Go Home
-          </Link>
+            <motion.div
+              className="w-full h-full overflow-hidden shadow-2xl bg-[#0a0a0a] border border-white/5 rounded-sm"
+              whileHover={{ scale: 0.96 }}
+            >
+              <img
+                src={images[i % images.length]}
+                loading="lazy"
+                className="w-full h-full object-cover grayscale brightness-75 hover:grayscale-0 hover:brightness-110 transition-all duration-700 ease-out"
+              />
+            </motion.div>
+          </div>
+        ))}
+      </motion.div>
+
+      {/* 🏷️ FIXED BRANDING */}
+      <div className="fixed bottom-8 right-6 sm:bottom-16 sm:right-16 z-50 mix-blend-difference pointer-events-none">
+        <h2 className="text-5xl sm:text-8xl md:text-[10rem] font-black uppercase leading-[0.75] tracking-tighter text-white">
+          NEXUS
+          <br />
+          ARMORY
+        </h2>
+        <div className="mt-4 flex items-center gap-3">
+          <div className="w-8 h-px bg-white/40" />
+          <span className="text-[8px] font-bold uppercase tracking-[0.4em] text-white/60">
+            Kinetic Intel Archive v2.1
+          </span>
         </div>
       </div>
-    </section>
+
+      {/* 🖱️ INTERACTION HINT (Hidden on very small screens) */}
+      <div className="fixed top-1/2 left-6 -translate-y-1/2 z-50 hidden sm:flex flex-col items-center gap-4 pointer-events-none">
+        <div className="w-px h-24 bg-linear-to-b from-transparent via-purple-500 to-transparent" />
+        <span className="[writing-mode:vertical-lr] text-[8px] font-black uppercase tracking-[1em] text-purple-400 opacity-50">
+          Initiate Deep Scroll
+        </span>
+      </div>
+    </div>
   );
 };
 
