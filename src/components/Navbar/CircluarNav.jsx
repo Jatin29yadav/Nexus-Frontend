@@ -3,23 +3,20 @@ import { gsap } from "gsap";
 import { Link, useNavigate } from "react-router-dom";
 import "./CircularNav.css";
 
-// 🚨 Updated Icons for the new links
 import {
   IoHomeSharp,
   IoTrophySharp,
   IoCalendarSharp,
   IoMailSharp,
-  IoLogInSharp,
   IoImagesSharp,
 } from "react-icons/io5";
 
-// 🚨 Updated Menu Items as per your request
+// 🚨 REMOVED LOGIN, NOW 5 PERFECT SLICES
 const menuItems = [
   { label: "Home", icon: <IoHomeSharp />, href: "/" },
   { label: "Tournament", icon: <IoTrophySharp />, href: "/tournament" },
   { label: "Bookings", icon: <IoCalendarSharp />, href: "/bookings" },
   { label: "Contact", icon: <IoMailSharp />, href: "/contact" },
-  { label: "Login", icon: <IoLogInSharp />, href: "/login" },
   { label: "Gallery", icon: <IoImagesSharp />, href: "/gallery" },
 ];
 
@@ -360,19 +357,19 @@ const CircularMenu = () => {
         className="menu-toggle-btn"
         onClick={toggleMenu}
         style={{
-          background: "rgba(255, 255, 255, 0.05)",
+          background: "rgba(10, 10, 10, 0.8)", // 🚨 DARK THEME
           backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)",
-          borderTop: "1px solid rgba(255, 255, 255, 0.1)",
+          borderTop: "1px solid rgba(168, 85, 247, 0.3)", // 🚨 PURPLE BORDER
         }}
       >
         <div
           className="hamburger-bar"
-          style={{ backgroundColor: "#fff" }}
+          style={{ backgroundColor: "#a855f7" }} // 🚨 PURPLE BAR
         ></div>
         <div
           className="hamburger-bar"
-          style={{ backgroundColor: "#fff" }}
+          style={{ backgroundColor: "#a855f7" }} // 🚨 PURPLE BAR
         ></div>
       </div>
 
@@ -393,7 +390,8 @@ const CircularMenu = () => {
             className="close-btn"
             onClick={toggleMenu}
             style={{
-              backgroundColor: "rgba(255, 255, 255, 0.1)",
+              backgroundColor: "rgba(168, 85, 247, 0.1)", // 🚨 PURPLE TINT
+              border: "1px solid rgba(168, 85, 247, 0.4)",
               width: "48px",
               height: "48px",
               borderRadius: "50%",
@@ -405,11 +403,19 @@ const CircularMenu = () => {
           >
             <div
               className="close-btn-bar"
-              style={{ left: "12px", width: "24px" }}
+              style={{
+                left: "12px",
+                width: "24px",
+                backgroundColor: "#a855f7",
+              }} // 🚨 PURPLE X
             ></div>
             <div
               className="close-btn-bar"
-              style={{ left: "12px", width: "24px" }}
+              style={{
+                left: "12px",
+                width: "24px",
+                backgroundColor: "#a855f7",
+              }} // 🚨 PURPLE X
             ></div>
           </div>
         </div>
@@ -486,8 +492,9 @@ const CircularMenu = () => {
               overflow: "hidden",
             }}
           >
+            {/* Keeping your image inside joystick */}
             <img
-              src="../../../../Images/img3.jpg"
+              src="/Images/Logo.jpg"
               alt="Menu Center Logo"
               style={{
                 width: "100%",

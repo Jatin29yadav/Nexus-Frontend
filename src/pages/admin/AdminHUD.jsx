@@ -1,22 +1,19 @@
-import React from "react";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
-import useApi from "../../hooks/useApi"; // 👈 Tera naya secure hook
+import useApi from "../../hooks/useApi";
 
 const AdminHUD = () => {
-  const api = useApi(); // Initialize secure API instance
+  const api = useApi();
 
-  // 🚀 REACT QUERY: Fetching real data from backend
   const { data, isLoading, isError } = useQuery({
     queryKey: ["adminDashboardStats"],
     queryFn: async () => {
       const response = await api.get("/admin/dashboard");
-      return response.data; // Backend se jo response aayega (e.g. { success: true, stats: [...], recentBookings: [...] })
+      return response.data.data;
     },
   });
 
-  // ⏳ SKELETON LOADER (Jab tak backend se data aa raha hai)
   if (isLoading) {
     return (
       <div className="max-w-6xl min-h-[60vh] mx-auto flex flex-col items-center justify-center space-y-4">
@@ -28,7 +25,6 @@ const AdminHUD = () => {
     );
   }
 
-  // 🚨 ERROR STATE (Agar server down ho ya token expire ho gaya ho)
   if (isError) {
     return (
       <div className="max-w-6xl mx-auto p-6 bg-red-500/10 border border-red-500/30 rounded-3xl text-center">
@@ -39,18 +35,17 @@ const AdminHUD = () => {
     );
   }
 
-  // 🛡️ FALLBACK DATA (Agar backend ka structure alag ho, toh app break na ho)
-  const stats = data?.stats || [
+  const stats = [
     {
       label: "Active Deployments",
-      value: "0",
+      value: data?.activeBookingsCount || "0",
       status: "Live",
       color: "text-green-400",
     },
     {
-      label: "Total Revenue (Today)",
-      value: "₹0",
-      status: "Data Wait",
+      label: "Total Stations",
+      value: data?.totalStations || "0",
+      status: "Online",
       color: "text-purple-400",
     },
     {
@@ -61,17 +56,16 @@ const AdminHUD = () => {
     },
     {
       label: "Total Operatives",
-      value: "0",
+      value: data?.totalGamers || "0",
       status: "Steady",
       color: "text-blue-400",
     },
   ];
 
-  const recentBookings = data?.recentBookings || [];
+  const recentBookings = data?.activeBookingsData || [];
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 md:space-y-8 pb-10">
-      {/* 🚀 STATS GRID */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         {stats.map((stat, i) => (
           <motion.div
@@ -98,7 +92,6 @@ const AdminHUD = () => {
         ))}
       </div>
 
-      {/* 📋 RECENT DEPLOYMENTS TABLE */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -112,12 +105,12 @@ const AdminHUD = () => {
         </div>
 
         <div className="w-full overflow-x-auto scrollbar-hide">
-          <table className="w-full text-left border-collapse min-w-[700px]">
+          <table className="w-full text-left border-collapse min-w-175">
             <thead>
-              <tr className="bg-white/[0.02] border-b border-white/5 text-[9px] font-black uppercase tracking-[0.2em] text-gray-500">
+              <tr className="bg-white/2 border-b border-white/5 text-[9px] font-black uppercase tracking-[0.2em] text-gray-500">
                 <th className="p-4 pl-6">Mission ID</th>
                 <th className="p-4">Operative</th>
-                <th className="p-4">Station</th>
+                <th className="p-4">Stations</th>
                 <th className="p-4">Time Window</th>
                 <th className="p-4 pr-6">Status</th>
               </tr>
@@ -127,7 +120,7 @@ const AdminHUD = () => {
                 recentBookings.map((booking, i) => (
                   <tr
                     key={i}
-                    className="border-b border-white/5 hover:bg-white/[0.02] transition-colors text-xs font-bold text-gray-300"
+                    className="border-b border-white/5 hover:bg-white/2 transition-colors text-xs font-bold text-gray-300"
                   >
                     <td className="p-4 pl-6 font-mono text-purple-400">
                       {booking._id
@@ -137,14 +130,17 @@ const AdminHUD = () => {
                     <td className="p-4 uppercase tracking-wider text-white">
                       {booking.user?.username || "Unknown"}
                     </td>
-                    <td className="p-4 uppercase tracking-wider">
-                      {booking.assignedStation?.stationId || "Pending"}
+                    <td className="p-4 uppercase tracking-wider text-purple-300">
+                      {booking.stations?.join(", ") || "N/A"}
                     </td>
                     <td className="p-4 font-mono text-gray-400">
-                      {new Date(booking.startTime).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                      {new Date(booking.bookingTime.start).toLocaleTimeString(
+                        [],
+                        {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        },
+                      )}
                     </td>
                     <td className="p-4 pr-6">
                       <span className="px-3 py-1 rounded-full text-[9px] uppercase tracking-widest border bg-green-500/10 text-green-400 border-green-500/20">

@@ -1,31 +1,40 @@
-import React from "react";
+import React, { useState } from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App.jsx";
 import "./index.css";
-import { ClerkProvider } from "@clerk/clerk-react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { AnimatePresence } from "framer-motion";
+import BootLoader from "./components/BootLoader.jsx";
 
-const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+// 🚨 FIX: Changed to AuthProvider to match your context file exactly
+import { AuthProvider } from "./context/AuthContext.jsx";
 
-if (!PUBLISHABLE_KEY) {
-  throw new Error("Missing Publishable Key. Please check your .env file.");
-}
+const RootComponent = () => {
+  const [isBooting, setIsBooting] = useState(() => {
+    const hasBooted = sessionStorage.getItem("nexus_booted");
+    return !hasBooted;
+  });
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      retry: 1,
-    },
-  },
-});
+  const handleBootComplete = () => {
+    setIsBooting(false);
+    sessionStorage.setItem("nexus_booted", "true");
+  };
+
+  return (
+    <>
+      <AnimatePresence mode="wait">
+        {isBooting && <BootLoader onComplete={handleBootComplete} />}
+      </AnimatePresence>
+
+      {/* 🚨 FIX: Using AuthProvider here as well */}
+      <AuthProvider>
+        <App />
+      </AuthProvider>
+    </>
+  );
+};
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
-      <QueryClientProvider client={queryClient}>
-        <App />
-      </QueryClientProvider>
-    </ClerkProvider>
+    <RootComponent />
   </React.StrictMode>,
 );

@@ -8,17 +8,14 @@ import {
 } from "react-icons/io5";
 
 const Toast = ({ message, type = "success", onClose }) => {
-  // ⏳ Auto-dismiss timer (5 seconds)
   useEffect(() => {
     const timer = setTimeout(() => {
       onClose();
     }, 5000);
 
-    // Cleanup timer agar component pehle hi unmount ho jaye
     return () => clearTimeout(timer);
   }, [onClose]);
 
-  // 🎨 Dynamic Styling based on "type"
   const typeStyles = {
     success:
       "bg-green-500/10 border-green-500/50 text-green-400 shadow-[0_0_30px_rgba(34,197,94,0.2)]",
@@ -47,7 +44,6 @@ const Toast = ({ message, type = "success", onClose }) => {
         {message}
       </p>
 
-      {/* ✖️ Manual Close Button */}
       <button
         onClick={onClose}
         className="ml-2 p-1 hover:bg-white/10 rounded-full transition-colors opacity-70 hover:opacity-100 shrink-0"

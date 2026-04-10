@@ -13,3 +13,18 @@ input[type="datetime-local"] {
 body {
   font-family: "Outfit", sans-serif;
 }
+
+/* Add to your index.css */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #6b21a8;
+  border-radius: 10px;
+}
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #6b21a8 #000000;
+  overflow-y: auto !important; /* Forces scroll detection */
+  -webkit-overflow-scrolling: touch;
+}

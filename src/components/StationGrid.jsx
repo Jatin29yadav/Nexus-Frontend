@@ -1,58 +1,71 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Monitor, Gamepad2, CheckCircle2 } from "lucide-react";
+import { Monitor, Gamepad2, CheckCircle2, Loader2 } from "lucide-react";
+import useApi from "../hooks/useApi";
+import { toast } from "sonner";
 
 const StationGrid = ({ maxSelectable, onFinalize }) => {
+  const api = useApi();
   const [stations, setStations] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
   const [hoveredStation, setHoveredStation] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // 📡 Mocking API Fetch - 60 Stations (50 PC + 10 Console)
   useEffect(() => {
-    const generateStations = () => {
-      const rows = ["A", "B", "C", "D", "E", "F"];
-      const data = [];
-      rows.forEach((row) => {
-        for (let i = 1; i <= 10; i++) {
-          data.push({
-            id: `${row}-${i}`,
-            name:
-              row === "F" ? `Console-${i}` : `PC-${rows.indexOf(row) * 10 + i}`,
-            type: row === "F" ? "Console" : "PC",
-            status:
-              Math.random() > 0.8
-                ? "Occupied"
-                : Math.random() > 0.95
-                  ? "Maintenance"
-                  : "Available",
-            specs: "RTX 3080, i7-12700K, 32GB DDR5",
-            games: "Valorant, GTA V, Apex Legends",
-          });
+    const fetchStations = async () => {
+      try {
+        const response = await api.get("/stations");
+        if (response.data.success) {
+          setStations(response.data.stations);
         }
-      });
-      setStations(data);
+      } catch (error) {
+        console.error("Failed to fetch stations:", error);
+        toast.error("Radar Offline: Could not sync with base.");
+      } finally {
+        setLoading(false);
+      }
     };
-    generateStations();
-  }, []);
+    fetchStations();
+  }, [api]);
 
   const handleSelect = (station) => {
     if (station.status !== "Available") return;
 
-    if (selectedIds.includes(station.id)) {
-      setSelectedIds(selectedIds.filter((id) => id !== station.id));
+    if (selectedIds.includes(station.stationId)) {
+      setSelectedIds(selectedIds.filter((id) => id !== station.stationId));
     } else {
       if (selectedIds.length < maxSelectable) {
-        setSelectedIds([...selectedIds, station.id]);
+        setSelectedIds([...selectedIds, station.stationId]);
       } else {
-        // 🔄 BookMyShow Logic: Pehla wala remove, naya wala add
-        setSelectedIds([...selectedIds.slice(1), station.id]);
+        // If they click another PC while max is reached, it shifts the selection
+        setSelectedIds([...selectedIds.slice(1), station.stationId]);
       }
     }
   };
 
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh] bg-black">
+        <Loader2 className="w-10 h-10 text-purple-500 animate-spin mb-4" />
+        <div className="text-purple-500 font-black uppercase tracking-widest text-xs animate-pulse">
+          Scanning Sector for Available Units...
+        </div>
+      </div>
+    );
+  }
+
+  if (stations.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh] bg-black">
+        <div className="text-red-500 font-black uppercase tracking-widest text-xs">
+          No Stations Found in Database. Run Seed Script.
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col items-center justify-start md:justify-center min-h-screen bg-black p-3 md:p-6 pt-20 md:pt-6">
-      {/* 🏆 Status Header */}
+    <div className="flex flex-col items-center justify-start md:justify-center min-h-screen bg-black p-3 md:p-6 pt-20 md:pt-6 pb-20">
       <div className="mb-6 md:mb-10 text-center px-4">
         <h2 className="text-xl md:text-3xl font-black text-white tracking-tighter uppercase leading-none">
           Select <span className="text-purple-500">{maxSelectable}</span>{" "}
@@ -65,9 +78,7 @@ const StationGrid = ({ maxSelectable, onFinalize }) => {
         </p>
       </div>
 
-      {/* 🗺️ The Grid Area - Optimized for 320px Mobile-S */}
       <div className="relative w-full max-w-5xl bg-[#0a0a0a] border border-purple-500/20 rounded-3xl md:rounded-4xl p-3 md:p-10 shadow-[0_0_100px_rgba(168,85,247,0.05)]">
-        {/* 🏷️ Responsive Legend */}
         <div className="flex flex-wrap justify-center gap-4 md:gap-6 mb-8 text-[8px] md:text-[10px] uppercase font-bold tracking-widest">
           <div className="flex items-center gap-1.5 text-purple-400">
             <div className="w-2 h-2 rounded-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.8)]" />{" "}
@@ -77,20 +88,20 @@ const StationGrid = ({ maxSelectable, onFinalize }) => {
             <div className="w-2 h-2 rounded-full bg-red-900" /> Occupied
           </div>
           <div className="flex items-center gap-1.5 text-gray-700">
-            <div className="w-2 h-2 rounded-full bg-gray-700" /> Offline
+            <div className="w-2 h-2 rounded-full bg-gray-700" /> Offline/Maint
           </div>
         </div>
 
-        {/* 🔳 60-Station Grid - gap-1.5 is key for 320px screens */}
         <div className="grid grid-cols-5 md:grid-cols-10 gap-1.5 md:gap-4">
           {stations.map((s) => {
-            const isSelected = selectedIds.includes(s.id);
+            const isSelected = selectedIds.includes(s.stationId);
             const isAvailable = s.status === "Available";
             const isOccupied = s.status === "Occupied";
-            const isMaintenance = s.status === "Maintenance";
+            const isMaintenance =
+              s.status === "Maintenance" || s.status === "Offline";
 
             return (
-              <div key={s.id} className="relative group">
+              <div key={s._id || s.stationId} className="relative group">
                 <motion.button
                   whileTap={isAvailable ? { scale: 0.9 } : {}}
                   onMouseEnter={() => isAvailable && setHoveredStation(s)}
@@ -113,29 +124,38 @@ const StationGrid = ({ maxSelectable, onFinalize }) => {
                     />
                   )}
                   <span
-                    className={`text-[7px] md:text-[10px] font-black mt-0.5 ${isSelected ? "text-white" : "text-purple-500/20"}`}
+                    className={`text-[7px] md:text-[8px] font-black mt-1 ${isSelected ? "text-white" : isAvailable ? "text-purple-500/60" : "text-gray-600"}`}
                   >
-                    {s.id}
+                    {s.stationId}
                   </span>
                 </motion.button>
 
-                {/* ℹ️ Hover Intelligence Tooltip */}
                 <AnimatePresence>
-                  {hoveredStation?.id === s.id &&
+                  {hoveredStation?.stationId === s.stationId &&
                     isAvailable &&
                     !isSelected && (
                       <motion.div
                         initial={{ opacity: 0, y: 5, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.95 }}
-                        className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-32 md:w-48 p-2 md:p-3 rounded-xl md:rounded-2xl bg-[#130f1d] border border-purple-500/30 shadow-2xl z-100 pointer-events-none"
+                        className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-32 md:w-48 p-2 md:p-3 rounded-xl md:rounded-2xl bg-[#130f1d] border border-purple-500/30 shadow-2xl z-50 pointer-events-none"
                       >
                         <div className="text-[8px] md:text-[10px] text-purple-400 font-black uppercase mb-1">
                           Hardware Info
                         </div>
                         <div className="text-[7px] md:text-[9px] text-white/60 leading-tight">
-                          <p className="mb-0.5 tracking-tight">⚡ {s.specs}</p>
-                          <p className="tracking-tight">🎮 {s.games}</p>
+                          <p className="mb-0.5 tracking-tight">
+                            ⚡{" "}
+                            {s.type === "PC"
+                              ? "RTX 3080, i7, 32GB"
+                              : "Next-Gen Console"}
+                          </p>
+                          <p className="tracking-tight">
+                            🎮{" "}
+                            {s.type === "PC"
+                              ? "Valorant, GTA V, CS2"
+                              : "FIFA, Mortal Kombat"}
+                          </p>
                         </div>
                         <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 md:border-8 border-transparent border-t-[#130f1d]" />
                       </motion.div>
@@ -147,18 +167,51 @@ const StationGrid = ({ maxSelectable, onFinalize }) => {
         </div>
       </div>
 
-      {/* 🚀 Checkout Floating Action Button */}
+      {/* 🚨 NEW OVERLAY POPUP FOR CONFIRMATION */}
       <AnimatePresence>
         {selectedIds.length === maxSelectable && (
-          <motion.button
-            initial={{ y: 50, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 50, opacity: 0 }}
-            onClick={() => onFinalize(selectedIds)}
-            className="fixed bottom-6 md:bottom-10 flex items-center gap-3 bg-purple-600 hover:bg-purple-500 text-white px-6 py-3 md:px-10 md:py-4 rounded-xl md:rounded-2xl font-black text-xs md:text-lg shadow-[0_20px_40px_rgba(168,85,247,0.4)] transition-all z-200 uppercase tracking-widest"
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-1000 flex items-center justify-center bg-black/90 backdrop-blur-md p-4"
           >
-            Deploy Squad <CheckCircle2 className="w-4 h-4 md:w-6 md:h-6" />
-          </motion.button>
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-[#0a0a0a] border border-purple-500/30 w-full max-w-sm p-8 rounded-[2.5rem] text-center shadow-[0_0_80px_rgba(168,85,247,0.15)]"
+            >
+              <div className="w-20 h-20 bg-purple-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-purple-500/20">
+                <CheckCircle2 className="text-4xl text-purple-500" />
+              </div>
+
+              <h2 className="text-2xl font-black uppercase text-white mb-2 tracking-tighter">
+                Squad <span className="text-purple-500">Ready</span>
+              </h2>
+              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-relaxed mb-8 px-2">
+                Selected Units:{" "}
+                <span className="text-purple-400">
+                  {selectedIds.join(", ")}
+                </span>
+              </p>
+
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => onFinalize(selectedIds)}
+                  className="w-full bg-purple-600 hover:bg-purple-500 text-white py-4 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-[0_10px_20px_rgba(168,85,247,0.3)] transition-all"
+                >
+                  Confirm Deployment
+                </button>
+                <button
+                  onClick={() => setSelectedIds(selectedIds.slice(0, -1))}
+                  className="w-full bg-white/5 hover:bg-white/10 text-white py-4 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest transition-all"
+                >
+                  Modify Selection
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

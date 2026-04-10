@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import useApi from "../hooks/useApi"; // ✅ Correct secure hook
+import useApi from "../hooks/useApi";
 import { useNavigate } from "react-router-dom";
 import PlayerAmount from "../components/PlayerAmount";
 import StationGrid from "../components/StationGrid";
 import HUDTimePicker from "../components/HUDTimePicker";
-import { useUser } from "@clerk/clerk-react";
+import { AuthContext } from "../context/AuthContext"; // ✅ Custom Auth
 import {
   IoCallOutline,
   IoChevronBackOutline,
@@ -14,7 +14,7 @@ import {
 
 const Booking = () => {
   const navigate = useNavigate();
-  const { user, isLoaded } = useUser();
+  const { user, loading: authLoading } = useContext(AuthContext); // ✅ Clean Context
   const api = useApi();
 
   const [step, setStep] = useState(1);
@@ -35,18 +35,20 @@ const Booking = () => {
 
   // 🛡️ Sync user data once loaded
   useEffect(() => {
-    if (isLoaded && user) {
-      setFormData((prev) => ({
-        ...prev,
-        name: user.fullName || user.firstName,
-        email: user.primaryEmailAddress?.emailAddress,
-      }));
-    } else if (isLoaded && !user) {
-      navigate("/login", {
-        state: { message: "Access Denied! Login required." },
-      });
+    if (!authLoading) {
+      if (user) {
+        setFormData((prev) => ({
+          ...prev,
+          name: user.username || "",
+          email: user.email || "",
+        }));
+      } else {
+        navigate("/login", {
+          state: { message: "Access Denied! Login required." },
+        });
+      }
     }
-  }, [user, isLoaded, navigate]);
+  }, [user, authLoading, navigate]);
 
   const handleFinalSubmit = async (e) => {
     e.preventDefault();
@@ -78,7 +80,7 @@ const Booking = () => {
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
-        bookingType: selectedSeats[0]?.startsWith("C") ? "Console" : "PC", // Adjusted for seed format
+        bookingType: selectedSeats[0]?.startsWith("C") ? "Console" : "PC",
         membersCount: playerCount,
         membersName: [formData.name],
         bookingTime: { start: startISO, end: endISO },
@@ -86,24 +88,17 @@ const Booking = () => {
         totalAmount: formData.totalPrice,
       };
 
-      // 🚨 FIX: Use relative path only. Interceptor handles the rest.
       const res = await api.post("/bookings", payload);
 
       if (res.data.success) setStep(4);
     } catch (err) {
-      console.error("DEBUG FRONTEND ERROR:", {
-        status: err.response?.status,
-        data: err.response?.data,
-        headers: err.config?.headers, // Isme check karna ki 'Authorization' header ja raha hai ya nahi
-      });
-
       setError(err.response?.data?.message || "Deployment failed.");
     } finally {
       setLoading(false);
     }
   };
 
-  if (!isLoaded)
+  if (authLoading)
     return (
       <div className="min-h-screen bg-black flex items-center justify-center font-black text-purple-500 animate-pulse">
         AUTHENTICATING SYSTEM...
@@ -123,9 +118,9 @@ const Booking = () => {
           >
             <button
               onClick={() => navigate("/")}
-              className="fixed top-24 left-4 md:top-28 md:left-10 flex items-center gap-1 text-purple-500 font-black text-[10px] uppercase tracking-widest z-50 bg-purple-500/10 px-3 py-2 rounded-full border border-purple-500/20"
+              className="fixed top-24 left-4 md:top-28 md:left-10 flex items-center gap-1 text-purple-500 font-black text-[10px] uppercase tracking-widest z-[999] bg-purple-500/10 px-4 py-2 rounded-full border border-purple-500/20 hover:bg-purple-500/20 transition-all"
             >
-              <IoChevronBackOutline /> EXIT BASE
+              <IoChevronBackOutline /> BACK TO HUB
             </button>
             <PlayerAmount
               onSelectionComplete={(size) => {

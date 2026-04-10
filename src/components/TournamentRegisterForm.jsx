@@ -1,12 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { IoShieldCheckmarkOutline } from "react-icons/io5";
-import useApi from "../hooks/useApi"; // ✅ Secure API hook
-import { toast } from "sonner"; // ✅ Sonner notifications
+import useApi from "../hooks/useApi";
+import { AuthContext } from "../context/AuthContext";
+import { toast } from "sonner";
 
 const tournamentSchema = z.object({
   teamName: z.string().min(3, "Squad/Team Name must be at least 3 characters"),
@@ -26,26 +27,39 @@ const TournamentRegisterForm = ({
   tournamentId,
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const api = useApi(); // Secure API instance
+  const [successMsg, setSuccessMsg] = useState("");
+  const api = useApi();
+  const { user } = useContext(AuthContext);
 
   const {
     register,
     handleSubmit,
     watch,
     reset,
+    setValue,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(tournamentSchema),
     defaultValues: { entryType: "squad" },
   });
 
+  useEffect(() => {
+    if (user) {
+      setValue("email", user.email || "");
+      if (watch("entryType") === "solo") {
+        setValue("teamName", user.username || "");
+      }
+    }
+  }, [user, setValue, watch("entryType")]);
+
   const entryType = watch("entryType");
 
   const onSubmit = async (data) => {
     setIsSubmitting(true);
+    setSuccessMsg("");
     try {
-      // 🚀 Real API Call using Clerk Token
       await api.post(`/tournaments/${tournamentId}/register`, data);
+      setSuccessMsg("Registration Confirmed! Squad Enlisted.");
       toast.success("Registration Confirmed! Squad Enlisted.");
       reset();
     } catch (err) {
@@ -62,7 +76,6 @@ const TournamentRegisterForm = ({
       transition={{ duration: 0.5 }}
       className="max-w-2xl w-full bg-[#0a0a0a] border border-white/10 rounded-4xl p-8 md:p-10 relative overflow-hidden shadow-[0_0_50px_rgba(239,68,68,0.05)] mx-auto"
     >
-      {/* Background Glow */}
       <div className="absolute top-0 right-0 w-64 h-64 bg-red-600/10 blur-[80px] rounded-full pointer-events-none" />
 
       <div className="relative z-10 mb-8">
@@ -81,12 +94,10 @@ const TournamentRegisterForm = ({
         </div>
       )}
 
-      {/* 📝 The Registration Form */}
       <form
         onSubmit={handleSubmit(onSubmit)}
         className="space-y-6 relative z-10"
       >
-        {/* Entry Type Selection (Radio Buttons styled as tabs) */}
         <div className="grid grid-cols-2 gap-4 p-1 bg-[#050505] border border-white/10 rounded-2xl">
           <label
             className={`text-center py-3 rounded-xl text-xs font-bold uppercase tracking-widest cursor-pointer transition-all ${entryType === "solo" ? "bg-white/10 text-white" : "text-gray-500 hover:text-gray-300"}`}
@@ -113,7 +124,6 @@ const TournamentRegisterForm = ({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* TEAM / IGN NAME */}
           <div>
             <label className="block text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-2">
               {entryType === "squad" ? "Squad Name" : "Operative Alias"}
@@ -133,7 +143,6 @@ const TournamentRegisterForm = ({
             )}
           </div>
 
-          {/* GAME ID (RIOT ID / STEAM ID) */}
           <div>
             <label className="block text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-2">
               In-Game ID (#Tag)
@@ -153,7 +162,6 @@ const TournamentRegisterForm = ({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* EMAIL */}
           <div>
             <label className="block text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-2">
               Captain's Email
@@ -171,7 +179,6 @@ const TournamentRegisterForm = ({
             )}
           </div>
 
-          {/* DISCORD ID */}
           <div>
             <label className="block text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-2">
               Discord Username
@@ -190,7 +197,6 @@ const TournamentRegisterForm = ({
           </div>
         </div>
 
-        {/* RULES CHECKBOX */}
         <div className="pt-4 border-t border-white/5">
           <label className="flex items-start gap-3 cursor-pointer group">
             <div className="relative flex items-center justify-center mt-0.5">
@@ -216,7 +222,6 @@ const TournamentRegisterForm = ({
           </label>
         </div>
 
-        {/* SUBMIT BUTTON */}
         <button
           type="submit"
           disabled={isSubmitting}

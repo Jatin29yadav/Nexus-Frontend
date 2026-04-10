@@ -1,4 +1,3 @@
-import React, { useEffect } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -8,11 +7,8 @@ import {
 import { AnimatePresence } from "framer-motion";
 import { ReactLenis } from "lenis/react";
 import { Toaster } from "sonner";
-import { useUser } from "@clerk/clerk-react";
-import useApi from "./hooks/useApi";
 
 import Layout from "./components/Layout";
-import CircularMenu from "./components/Navbar/CircluarNav";
 import { PageTransition } from "./components/PageTransition";
 import ProtectedRoute from "./components/ProtectedRoute";
 import "lenis/dist/lenis.css";
@@ -28,6 +24,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Payment from "./pages/Payment";
 import UpdateBooking from "./components/UpdateBooking";
+import Profile from "./pages/Profile";
 
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminHUD from "./pages/admin/AdminHUD";
@@ -35,31 +32,6 @@ import AdminBookings from "./pages/admin/AdminBookings";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminMessages from "./pages/admin/AdminMessages";
-
-const SyncComponent = () => {
-  const { user, isLoaded } = useUser();
-  const api = useApi();
-
-  useEffect(() => {
-    const syncWithBackend = async () => {
-      if (isLoaded && user) {
-        try {
-          await api.post("/users/sync", {
-            clerkId: user.id,
-            email: user.primaryEmailAddress.emailAddress,
-            username: user.username || user.firstName,
-          });
-          console.log("Nexus Operative Synced! 🚀");
-        } catch (err) {
-          console.error("Sync Failed:", err);
-        }
-      }
-    };
-    syncWithBackend();
-  }, [isLoaded, user, api]);
-
-  return null;
-};
 
 const AnimatedRoutes = () => {
   const location = useLocation();
@@ -110,7 +82,7 @@ const AnimatedRoutes = () => {
           />
 
           <Route
-            path="login/*"
+            path="login"
             element={
               <PageTransition>
                 <Login />
@@ -118,10 +90,18 @@ const AnimatedRoutes = () => {
             }
           />
           <Route
-            path="register/*"
+            path="register"
             element={
               <PageTransition>
                 <Register />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="profile"
+            element={
+              <PageTransition>
+                <Profile />
               </PageTransition>
             }
           />
@@ -234,7 +214,6 @@ function App() {
         }}
       />
       <Router>
-        <SyncComponent />
         <AnimatedRoutes />
       </Router>
     </ReactLenis>

@@ -6,43 +6,52 @@ export const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const API_URL =
+    import.meta.env.VITE_API_BASE_URL || "http://localhost:3005/api";
 
-  // 1. Check user on initial load
   useEffect(() => {
     const checkUser = async () => {
       try {
-        const res = await axios.get("http://localhost:3005/api/users/profile", {
-          withCredentials: true, // 🚨 Yeh JWT cookies bhejne ke liye zaroori hai
+        const res = await axios.get(`${API_URL}/users/profile`, {
+          withCredentials: true,
         });
-        setUser(res.data.user); // Backend se jo user details aayin, wo save kar li
+        setUser(res.data.user);
       } catch (error) {
-        setUser(null);
+        if (error.response?.status === 401) {
+          setUser(null);
+        } else {
+          console.error("System Sync Error:", error.message);
+          setUser(null);
+        }
       } finally {
         setLoading(false);
       }
     };
     checkUser();
-  }, []);
+  }, [API_URL]);
 
-  // 2. Real Login Function
   const login = async (email, password) => {
     const res = await axios.post(
-      "http://localhost:3005/api/users/login",
+      `${API_URL}/users/login`,
       { email, password },
       { withCredentials: true },
     );
-    setUser(res.data.user); // State update ki, taaki app ko pata chale hum login hain
+    setUser(res.data.user);
     return res.data;
   };
 
-  // 3. Real Logout Function
   const logout = async () => {
-    await axios.post(
-      "http://localhost:3005/api/users/logout",
-      {},
-      { withCredentials: true },
-    );
-    setUser(null);
+    try {
+      await axios.post(
+        `${API_URL}/users/logout`,
+        {},
+        { withCredentials: true },
+      );
+    } catch (err) {
+      console.error("Logout sequence failed", err);
+    } finally {
+      setUser(null);
+    }
   };
 
   return (
